@@ -1,13 +1,21 @@
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
-const Listing = require("./models/listing.js");
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
-const wrapAsync = require("./utils/wrapAsync.js");
 const ExpressError = require("./utils/ExpressError.js");
+const session = require("express-session");
+const flash = require("connect-flash");
+const passport = require("passport");
+const LocalStrategy = require("passport-local");
+const User = require("./models/user.js");
 
+
+const listingRouter = require("./routes/listings.js");
+const reviewRouter = require("./routes/reviews.js");
+const userRouter = require("./routes/user.js");
+ 
 
 // database connection
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust1";
@@ -30,79 +38,56 @@ app.use(methodOverride("_method"));
 app.engine("ejs",ejsMate);
 app.use(express.static(path.join(__dirname,"/public")));
 
+const sessionOptions = {
+    secret: "superSecrateCode",
+    resave : false,
+    saveUninitialized :true,
+    cookie :{
+        expires : Date.now() * 7 * 24 * 60 * 60 * 1000,
+        maxAge :  7 * 24 * 60 * 60 * 1000,
+        httpOnly : true
+    },
+};
 
 app.get("/" ,(req,res) => {
     res.send("Hi i am root");
 });
 
-// Index Route
-app.get("/listings" , wrapAsync(async(req,res) =>{
-   const allListings = await Listing.find({});
-   res.render("listings/index.ejs" , {allListings});
-}));
+app.use(session(sessionOptions));
+app.use(flash());
 
-// New Route
-app.get("/listings/new" ,(req,res)=>{
+app.use(passport.initialize());
+app.use(passport.session());
+// use static authenticate method of model in LocalStrategy
+passport.use(new LocalStrategy(User.authenticate()));
+// use static serialize and deserialize of model for passport session support
 
-    res.render("listings/new.ejs");
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
+
+app.use((req,res,next) =>{
+    res.locals.success = req.flash("success");
+    res.locals.error = req.flash("error");
+    res.locals.currUser = req.user;
+    // console.log(res.locals.success);
+    console.log(res.locals.currUser);
+    next();
 });
 
-// Show Route
-// app.get("/listings/:id",wrapAsync(async(req,res) =>{
-//      let {id} = req.params;
-//     const listing = await Listing.findById(id);
-//     // console.log(listing);
-//     res.render("listings/show.ejs",{listing});
-// }));
+// app.get("/demouser" ,async(req,res)=>{
+//     let fakeUser = new User({
+//         email:"student@gmail.com",
+//         username : "sigma-Student"
+//     });
 
-// Show Route
-app.get("/listings/:id",wrapAsync(async(req,res) =>{
-    let {id} = req.params;
-   const listing = await Listing.findById(id);
-    console.log(listing);
-   res.render("listings/show.ejs",{listing});
-}));
+//     let registedUser = await User.register(fakeUser,"hello");
+//     res.send(registedUser);
+// });
 
-// Create Route
-app.post("/listings",wrapAsync(async(req,res, next)=>{
-    // let listing = req.body.listing;
-    // new Listing(listing);
-    if(!req.body.listing){
-        throw new ExpressError(400,"Send valid data for Listing");
-    }
-        const newListing = new Listing(req.body.listing);
-        await newListing.save();
-        console.log(newListing);
-        res.redirect("/listings");
-   
 
-} ));
-
-// Edit Route
-app.get("/listings/:id/edit" ,wrapAsync(async(req,res)=>{
-    let{id} = req.params;
-    const listing = await Listing.findById(id);
-    res.render("listings/edit.ejs" , {listing});
-}));
-
-// Update Route
-app.put("/listings/:id" ,wrapAsync(async(req,res) =>{
-    if(!req.body.listing){
-        throw new ExpressError(400,"Send valid data for Listing");
-    }
-    let {id} = req.params;
-    await Listing.findByIdAndUpdate(id,{...req.body.listing});
-    res.redirect(`/listings/${id}`);
-}));
-
-// DElete Route
-app.delete("/listings/:id",wrapAsync(async(req,res)=>{
-    let{id} = req.params;
-    let deleteListing = await Listing.findByIdAndDelete(id);
-    console.log(deleteListing);
-    res.redirect("/listings");
-
-}));
+app.use("/listings" ,listingRouter);
+app.use("/listings/:id/reviews" ,reviewRouter );
+app.use("/", userRouter);
 
 
 // app.get("/testListing" , async (req,res) =>{
@@ -123,11 +108,25 @@ app.all("*" ,(req,res,next)=>{
     next(new ExpressError(404,"Page Not Found"));
 });
 
-app.use((err,req,res,next)=>{
-let {statusCode = 500, message = "Something went Wrong!!"} =  err;
-// res.status(statusCode).send(message);
-res.status(statusCode).render("listings/error.ejs" , {err});
-    // res.send("Something went wrong");
+// app.use((err,req,res,next)=>{
+// let {statusCode = 500, message = "Something went Wrong!!"} =  err;
+// // res.status(statusCode).send(message);
+// // res.status(statusCode).render("listings/error.ejs" , {err});
+// res.status(statusCode).render("listings/error.ejs", { err: message });
+//     // res.send("Something went wrong");
+// });
+
+app.use((err, req, res, next) => {
+    // Destructure statusCode and message from the error object
+    let { statusCode = 500, message = "Something went wrong!" } = err;
+
+    // Check if headers have already been sent to avoid sending a second response
+    if (!res.headersSent) {
+        res.status(statusCode).render("listings/error.ejs", { err: message });
+    } else {
+        // If headers are already sent, pass the error to the next error handler
+        next(err);
+    }
 });
 
 app.listen(8080, () =>{
