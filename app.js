@@ -70,7 +70,7 @@ app.use((req,res,next) =>{
     res.locals.error = req.flash("error");
     res.locals.currUser = req.user;
     // console.log(res.locals.success);
-    console.log(res.locals.currUser);
+    // console.log(res.locals.currUser);
     next();
 });
 
@@ -126,6 +126,7 @@ app.use((err, req, res, next) => {
     } else {
         // If headers are already sent, pass the error to the next error handler
         next(err);
+        // next(new ExpressError(404,"Page Not Found"));
     }
 });
 

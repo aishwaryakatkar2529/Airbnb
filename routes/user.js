@@ -34,7 +34,7 @@ router.post("/signup", wrapAsync(async(req,res)=>{
 
 }));
 
-router.get("/login" ,(req,res)=>{
+    router.get("/login" ,(req,res)=>{
     res.render("users/login.ejs");
 });
 
@@ -55,5 +55,6 @@ router.get("/logout" ,(req,res) =>{
         req.flash("success" ," you are logged out!");
         res.redirect("/listings");
     });
-})
+});
+
 module.exports = router;
