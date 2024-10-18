@@ -1,3 +1,4 @@
+
 const sampleListings = [
   {
     title: "Cozy Beachfront Cottage",
@@ -348,5 +349,7 @@ const sampleListings = [
     country: "Costa Rica",
   },
 ];
+
+module.exports = { data: sampleListings };
 
 module.exports = { data: sampleListings };

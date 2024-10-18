@@ -1,3 +1,8 @@
+if(process.env.NODE_ENV != "production"){
+    require("dotenv").config();
+}
+// console.log(process.env.SECRET);
+
 const express = require("express");
 const app = express();
 const mongoose = require("mongoose");
@@ -19,6 +24,7 @@ const userRouter = require("./routes/user.js");
 
 // database connection
 const MONGO_URL = "mongodb://127.0.0.1:27017/wanderlust1";
+const dbUrl =process.env.ATLASDB_URL;
 main()
 .then(()=>{
     console.log("connected to db");
@@ -49,9 +55,9 @@ const sessionOptions = {
     },
 };
 
-app.get("/" ,(req,res) => {
-    res.send("Hi i am root");
-});
+// app.get("/" ,(req,res) => {
+//     res.send("Hi i am root");
+// });
 
 app.use(session(sessionOptions));
 app.use(flash());
@@ -116,18 +122,25 @@ app.all("*" ,(req,res,next)=>{
 //     // res.send("Something went wrong");
 // });
 
-app.use((err, req, res, next) => {
-    // Destructure statusCode and message from the error object
-    let { statusCode = 500, message = "Something went wrong!" } = err;
+// app.use((err, req, res, next) => {
+//     // Destructure statusCode and message from the error object
+//     let { statusCode = 500, message = "Something went wrong!" } = err;
 
-    // Check if headers have already been sent to avoid sending a second response
-    if (!res.headersSent) {
-        res.status(statusCode).render("listings/error.ejs", { err: message });
-    } else {
-        // If headers are already sent, pass the error to the next error handler
-        next(err);
-        // next(new ExpressError(404,"Page Not Found"));
-    }
+//     // Check if headers have already been sent to avoid sending a second response
+//     if (!res.headersSent) {
+//         res.status(statusCode).render("listings/error.ejs", { err: message });
+//     } else {
+//         // If headers are already sent, pass the error to the next error handler
+//         next(err);
+//         // next(new ExpressError(404,"Page Not Found"));
+//     }
+// });
+
+
+app.use((err, req, res, next) => {
+    let { statusCode = 500, message = "Something went wrong!" } = err;
+res.status(statusCode).render("listings/error.ejs", { message });
+    
 });
 
 app.listen(8080, () =>{
